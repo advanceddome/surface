@@ -9,7 +9,7 @@ initialmatrix = ones(size(X)); %colors has ones everywhere besides row 1,2==0
 adsorption=zeros(size(X));
 desorption=zeros(size(X));
 initialmatrix(1:2, :) = 0;
-etchcycles=3
+etchcycles=15
 Standard_Deviation_matrix=zeros(etchcycles,1);
 
 
@@ -19,22 +19,24 @@ b=100
 
 % find starting row of 1's for each column (creates surface matrix)
 
-
 for i=1:length_of_surface
     surface(i)=find(initialmatrix(:,i),1)
 end
 surface(2,:)=0;
 
 
+% sin_curve characteristics
+amplitude = 2
 periodicity = 10;
+position_sin_curve = 7
 
 % surface shape of sine
 for i=1:length_of_surface
-surface(1,i) = round((sin(i.*2.*pi/periodicity)))+4;
+surface(1,i) = round((amplitude.*sin(i.*2.*pi/periodicity)))+position_sin_curve;
 end
 
  
- plot (surface(1,1:length_of_surface),'k')
+%  plot (surface(1,1:length_of_surface),'k')
 
 
   pictureTest=ones(size(X))   
@@ -62,22 +64,13 @@ probability(1,:)=50;
 
 
 %probabilities for etching
-probablityAdsorption1 = 50;
-probablityAdsorption2 = 37.5;
-probablityAdsorption3 = 0;
+probablityAdsorption1 = 85;
+probablityAdsorption2 = 60;
+probablityAdsorption3 = 50;
+probabilityAdsorption_Spline=0
 
-
-calculateStandardDeviations(surface)
-
-% sum_surface=sum(surface(1,:),2)
-% average_surface_line=sum_surface./length_of_surface
-% average_surface_line_picture(1,1:length_of_surface)=average_surface_line
-% 
-% 
-% Standard_Deviation = std(surface,0,2)
-% Standard_Deviation_matrix(1,1)=Standard_Deviation(1);
-
-
+% adds Standard Deviation in the beginning
+Standard_Deviation_matrix(1,1)=calculateStandardDeviations_function(surface, length_of_surface);
 
 
 % setting the etching circles
@@ -158,7 +151,61 @@ if number_of_etching>1
            end
       end
       
+     if surface(1,surfaceposition)== surface(1,surfaceposition-1)-2
+         if surface(1,surfaceposition)== surface(1,surfaceposition+1)-2
+            surface(3,surfaceposition)=probablityAdsorption3 -10
+         end
+     end
       
+       if surface(1,surfaceposition)== surface(1,surfaceposition-1)-2
+         if surface(1,surfaceposition)== surface(1,surfaceposition+1)-1
+            surface(3,surfaceposition)=probablityAdsorption3 -5
+         end
+     end
+      
+       if surface(1,surfaceposition)== surface(1,surfaceposition+1)-2
+         if surface(1,surfaceposition)== surface(1,surfaceposition-1)-1
+            surface(3,surfaceposition)=probablityAdsorption3 -5
+         end
+       end
+ 
+       if surface(1,surfaceposition)< surface(1,surfaceposition+1)-2
+         if surface(1,surfaceposition)== surface(1,surfaceposition-1)-1
+            surface(3,surfaceposition)=probablityAdsorption3 -5
+         end 
+       end
+       
+       if surface(1,surfaceposition)< surface(1,surfaceposition-1)-2
+         if surface(1,surfaceposition)== surface(1,surfaceposition+1)-1
+            surface(3,surfaceposition)=probablityAdsorption3 -5
+         end 
+       end
+       
+       
+        if surface(1,surfaceposition)< surface(1,surfaceposition+1)-2
+         if surface(1,surfaceposition)< surface(1,surfaceposition-1)-2
+            surface(3,surfaceposition)=probablityAdsorption3 -10
+         end 
+        end
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+%       alternative
 %     if surface(1,surfaceposition)< surface(1,surfaceposition+1)&& surface(1,surfaceposition)< surface(1,surfaceposition-1)
 %         surface(2,surfaceposition)=3
 %         surface(3,surfaceposition)=0
@@ -186,6 +233,7 @@ if number_of_etching>1
     hold on 
  end
 end
+
  pictureTest=ones(size(X))   
 
 %  creates 2D matrix and picture out of surface matrix
@@ -202,25 +250,53 @@ end
  pictureTest(:,length_of_surface:length_of_surface+1)=0
  
   
- 
+%  creates average surface line matrix
  sum_surface=sum(surface(1,:),2)
 average_surface_line=sum_surface./length_of_surface
 average_surface_line_picture(1,1:length_of_surface)=average_surface_line
 
 
+% creates out of the surface the standard deviation and the standard
+% deviation matrix
 Standard_Deviation = std(surface,0,2)
 Standard_Deviation_matrix(number_of_etching+1,1)=Standard_Deviation(1);
 
+
 figure;
  
-
+% plots the average surface line in black
 plot(average_surface_line_picture,'k')
 hold on
 spy(pictureTest,'r')
 
- 
 
+
+% creates a spline out of the surface and plots the spline
+xx = 1:1:length_of_surface
+x_values_spline =1:length_of_surface;
+y_values_spline = spline(1:length_of_surface,surface(1,1:length_of_surface),xx);
+y_values_spline= y_values_spline(1,1:length_of_surface)-average_surface_line
+
+figure
+plot(x_values_spline,y_values_spline,'-')
+
+% changes the y-axis negative to create a similar illustration as the
+% picture plot
+axis ij 
+
+
+
+% changes the probability of each surface atom, if it is above or beneath
+% the surface line of the spline 
+
+for surfaceposition=2:length_of_surface-1
+    if y_values_spline(1,surfaceposition)<-1
+         probability(1,surfaceposition)= probability(1,surfaceposition)-probabilityAdsorption_Spline
+    end
 end
+end
+
+% plots the standard deviation as a function over all etch cycles
 figure
 plot (Standard_Deviation_matrix(:,1),'k')
 title('Standard Deviation over etch cycles');
@@ -228,92 +304,6 @@ xlabel('etch cycles');
 ylabel('Standard Deviation');
 
 
-
-
-
-% creates out of surface (just array) a 2D spy diagramm with picture as
-% function
-%  picture=ones(size(X))   
-% 
-%  for k=2:length_of_surface
-%     if surface(1,k)~=0
-%          picture(surface(1,k),k)=1
-%          
-%          picture(1:surface(1,k)-1,k)=0
-%     end
-%  end
- 
- 
-%          sideetching with a chance of 20% in the picture
-% right side
-
-%         for i=3:surface(1,k)
-%          sideetching_right=a+(b-a).*rand(1,1);
-%              if sideetching_right>100
-%                   picture(i-2,k+1)=0
-%              end
-%         end
-% 
-% % left side
-%         for j=3:surface(1,k)
-%             
-%          sideetching_left=a+(b-a).*rand(1,1);
-%              if sideetching_left>100
-%                   picture(j-2,k-1)=0
-%              end
-%         end
-%     end
-%  end
- 
- 
-%  surface(2,length(surface))=0
-%  for o=2:length(surface)-2
-%     if surface(1,o)< surface(1,o+1)&& surface(1,o)< surface(1,o-1)
-%         surface(2,o)=3
-%     end
-%     hold on
-%     if surface(1,o)== surface(1,o+1)&& surface(1,o)== surface(1,o-1)
-%         surface(2,o)=1
-%     end
-%     hold on
-%      if surface(1,o)> surface(1,o+1)&& surface(1,o)> surface(1,o-1)
-%         surface(2,o)=1
-%      end
-%     hold on
-%      if surface(2,o)==0 
-%        surface(2,o)=2
-%        
-%     end
-%     hold on
-%  end
-
- 
-%   for i=1:length(colors)
-%    
-%     surface(2,i)=find(picture(3:21,i),0)
-% end
-%          
-%    
-
-
-   % plot the grid
-% spy(picture,'r')
-
-% spy(surface,'r')
-% figure
-% hold on
-% 
-% spy(colors,'r')
-% hold on
-% spy(colors2,'g')
-% hold on
-% spy(colors3,'b')
-% hold on
-% 
-% xlabel('X'); % // Label the X and Y axes
-% ylabel('Y');
-% title('Initial Grid');
-% grid on
 
 
 
